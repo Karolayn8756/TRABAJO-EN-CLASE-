@@ -2,147 +2,137 @@
 
 ## Introducción
 
-Este proyecto simula un sistema de reservas turísticas usando **Python** y **PostgreSQL**. El objetivo es comprender cómo funcionan las transacciones en una base de datos relacional, utilizando **savepoints**, manejo de errores, compensaciones, deadlocks y timeouts.
+Este proyecto simula un sistema de venta de boletos para un concierto de BTS usando una base de datos relacional. El objetivo es comprender cómo funcionan las transacciones, los savepoints, los deadlocks y los timeouts cuando varias operaciones dependen entre sí.
 
-El escenario consiste en reservar tres servicios:
+En este caso, el sistema permite realizar una compra de boletos, verificar disponibilidad y controlar errores para evitar inconsistencias en los datos.
 
-1. Vuelo.
-2. Hotel.
-3. Transporte.
+## Objetivo del proyecto
 
-La reserva solo debe completarse si los tres servicios tienen disponibilidad.
+Simular el comportamiento de transacciones en una base de datos, aplicando un caso práctico de compra de boletos para un concierto de BTS.
 
-
+El sistema debe manejar correctamente situaciones como falta de disponibilidad, cancelación de una compra, bloqueos entre transacciones y operaciones que tardan demasiado tiempo.
 
 ## Conceptos principales
 
-### Transacciones y savepoints
+## Transacciones
 
-Una transacción permite ejecutar varias operaciones como una sola unidad. Si todo sale bien, se confirma con `COMMIT`; si ocurre un error, se revierte con `ROLLBACK`.
+Una transacción es un conjunto de operaciones que se ejecutan como una sola unidad. Si todo se realiza correctamente, se confirma con `COMMIT`. Si ocurre un error, se revierte con `ROLLBACK`.
 
-Un `SAVEPOINT` es un punto intermedio dentro de una transacción. Permite regresar a una parte específica sin cancelar todo desde el inicio.
+En este proyecto, la compra de boletos se maneja como una transacción porque se debe verificar la disponibilidad, descontar el boleto y registrar la compra de forma correcta.
 
-En este proyecto se usa un savepoint después de reservar el vuelo. Si el hotel no tiene cupo, el sistema vuelve a ese punto y cancela el vuelo mediante una compensación.
+## Savepoints
 
-### Deadlock
+Un savepoint es un punto de control dentro de una transacción. Permite volver a una parte específica sin cancelar todo el proceso.
 
-Un deadlock ocurre cuando dos transacciones se bloquean mutuamente. Por ejemplo, una transacción bloquea primero vuelos y luego hoteles, mientras otra bloquea primero hoteles y luego vuelos.
+En la simulación, se puede crear un savepoint después de seleccionar o reservar un boleto. Si luego ocurre un problema, como falta de disponibilidad o error en el proceso, el sistema puede regresar a ese punto y cancelar la operación sin afectar toda la base de datos.
 
-Esto provoca que ambas se queden esperando. PostgreSQL detecta el problema y cancela una de las transacciones.
+## Deadlock
 
-### Timeout
+Un deadlock ocurre cuando dos transacciones se bloquean entre sí. Por ejemplo, una transacción puede estar actualizando la disponibilidad de boletos mientras otra intenta modificar la misma información al mismo tiempo.
 
-Un timeout ocurre cuando una operación tarda demasiado tiempo. La base de datos cancela la operación para evitar que el sistema quede bloqueado indefinidamente.
+Cuando esto sucede, la base de datos detecta el conflicto y cancela una de las transacciones para que la otra pueda continuar.
 
+## Timeout
+
+Un timeout ocurre cuando una transacción tarda demasiado tiempo en completarse. La base de datos cancela la operación para evitar que el sistema quede esperando indefinidamente.
+
+Esto es útil en sistemas de venta de boletos, donde muchos usuarios pueden intentar comprar al mismo tiempo.
 
 ## Estructura del proyecto
+
+El repositorio contiene los siguientes archivos:
 
 ```text
 simulacion_transacciones.py
 README.md
 requirements.txt
 .gitignore
+```
 
+## Requisitos
 
-### Archivos
+Para ejecutar el proyecto se necesita:
 
-* `simulacion_transacciones.py`: script principal de la simulación.
-* `README.md`: documentación del proyecto.
-* `requirements.txt`: dependencias necesarias.
-* `.gitignore`: archivos que no se deben subir al repositorio.
+Python 3.x instalado.
 
+PostgreSQL activo.
 
-## Instalación
+Librería `psycopg2-binary`.
 
-Instalar la librería necesaria:
+Comando para instalar la librería:
 
 ```bash
 pip install psycopg2-binary
+```
 
-
-O instalar desde el archivo de dependencias:
+También se puede usar:
 
 ```bash
 pip install -r requirements.txt
-
-
-
+```
 
 ## Funcionamiento del sistema
 
-El programa crea tres tablas principales:
+El sistema trabaja con tablas relacionadas con la venta de boletos para el concierto de BTS.
 
-* `vuelos`: almacena vuelos y asientos disponibles.
-* `hoteles`: almacena hoteles y habitaciones disponibles.
-* `transportes`: almacena vehículos disponibles.
+Por ejemplo:
 
-Luego inserta datos de prueba y ejecuta las simulaciones.
+`boletos`: almacena la información de los boletos disponibles.
 
+`clientes`: almacena los datos de las personas que compran boletos.
 
+`compras`: registra las compras realizadas.
 
-## Simulación de reserva
+El sistema verifica si existen boletos disponibles antes de confirmar una compra. Si hay disponibilidad, se descuenta el boleto y se registra la compra. Si ocurre un error, la transacción se revierte para mantener la consistencia de los datos.
 
-El flujo normal de la reserva es:
+## Simulación de compra de boleto
 
-1. Se descuenta un asiento del vuelo.
-2. Se crea un savepoint.
-3. Se intenta reservar una habitación de hotel.
-4. Se reserva un transporte.
+El proceso funciona de la siguiente manera:
+
+1. Se verifica si hay boletos disponibles.
+2. Se reserva o descuenta un boleto.
+3. Se crea un savepoint dentro de la transacción.
+4. Se intenta registrar la compra.
 5. Si todo sale bien, se confirma la transacción.
+6. Si ocurre un error, se vuelve al savepoint o se realiza un rollback.
 
-Si el hotel no tiene cupo:
-
-1. Se vuelve al savepoint.
-2. Se cancela la reserva del vuelo.
-3. Se evita dejar datos incompletos.
-4. Se finaliza la transacción de forma controlada.
-
-
+De esta manera, el sistema evita vender boletos que ya no están disponibles.
 
 ## Simulación de deadlock
 
-Para simular el deadlock se ejecutan dos transacciones al mismo tiempo:
+Para simular un deadlock se ejecutan dos transacciones al mismo tiempo.
 
-* La primera actualiza vuelos y luego hoteles.
-* La segunda actualiza hoteles y luego vuelos.
+Una transacción intenta actualizar primero la disponibilidad de boletos y luego la compra.
 
-Como ambas intentan acceder a recursos bloqueados por la otra, se genera un deadlock. PostgreSQL detecta el bloqueo y cancela una de las transacciones para que la otra pueda continuar.
+Otra transacción intenta actualizar primero la compra y luego la disponibilidad de boletos.
 
-
+Como ambas transacciones esperan recursos bloqueados por la otra, se produce un deadlock. La base de datos detecta el problema y cancela una de ellas.
 
 ## Simulación de timeout
 
-La simulación de timeout consiste en configurar un tiempo máximo de espera para una transacción. Luego se ejecuta una operación lenta. Si la operación supera el tiempo permitido, PostgreSQL la cancela y se realiza un rollback.
+La simulación de timeout consiste en configurar un tiempo máximo de espera para una operación. Si una transacción tarda demasiado, la base de datos la cancela.
 
+Esto representa una situación real en la venta de boletos, cuando muchas personas intentan comprar entradas al mismo tiempo y el sistema puede tardar en responder.
 
+## Resultados esperados
 
-## Resultados obtenidos
-
-### Reserva exitosa
-
-Cuando hay disponibilidad en vuelo, hotel y transporte, la transacción se completa correctamente.
+Compra exitosa:
 
 ```text
-Reserva de vuelo realizada.
-Reserva de hotel realizada.
-Reserva de transporte realizada.
-Transacción confirmada correctamente.
-
-
-### Hotel sin cupo
-
-Cuando el hotel no tiene habitaciones disponibles, se usa el savepoint y se cancela el vuelo reservado.
-
-```text
-Vuelo reservado.
-Hotel sin cupo.
-Rollback al savepoint.
-Compensación realizada: vuelo cancelado.
+Boleto disponible.
+Compra registrada correctamente.
+Transacción confirmada.
 ```
 
-### Deadlock
+Falta de disponibilidad:
 
-Cuando dos transacciones bloquean recursos en orden contrario, PostgreSQL detecta el deadlock.
+```text
+No hay boletos disponibles.
+Rollback ejecutado.
+Compra cancelada.
+```
+
+Deadlock:
 
 ```text
 Deadlock detectado.
@@ -150,48 +140,44 @@ Una transacción fue cancelada.
 La otra transacción continuó correctamente.
 ```
 
-### Timeout
-
-Cuando una operación supera el tiempo máximo permitido, se cancela.
+Timeout:
 
 ```text
-Timeout alcanzado.
+Tiempo de espera agotado.
 Operación cancelada.
 Rollback ejecutado.
 ```
 
 ## Preguntas de reflexión
 
-### 1. ¿Por qué es importante usar savepoints en transacciones largas? ¿Qué problema resuelven?
+## 1. ¿Por qué es importante usar savepoints en transacciones largas? ¿Qué problema resuelven?
 
-Los savepoints son importantes porque permiten volver a un punto específico dentro de una transacción sin cancelar todo el proceso. Resuelven el problema de tener que repetir una transacción completa cuando solo falló una parte.
+Los savepoints son importantes porque permiten regresar a un punto específico dentro de una transacción sin cancelar todo el proceso. Resuelven el problema de tener que repetir toda la operación cuando solo falló una parte.
 
-### 2. ¿Qué pasaría si no usáramos savepoints y el hotel no tuviera cupo?
+## 2. En el escenario de venta de boletos, ¿qué pasaría si no usáramos savepoints?
 
-Si no se usaran savepoints, el sistema podría descontar el vuelo aunque el hotel no se haya reservado. Esto generaría una reserva incompleta y datos inconsistentes, porque el cliente tendría un vuelo apartado, pero no tendría hotel ni transporte.
+Si no se usaran savepoints, el sistema podría descontar un boleto aunque la compra no se complete correctamente. Esto causaría inconsistencias, porque el boleto aparecería como vendido aunque el cliente no haya terminado la compra.
 
-### 3. ¿Cómo se produce un deadlock?
+## 3. ¿Cómo se produce un deadlock en una base de datos?
 
-Un deadlock se produce cuando dos transacciones se bloquean entre sí. En el ejemplo, una transacción bloquea vuelos y luego intenta bloquear hoteles, mientras otra bloquea hoteles y luego intenta bloquear vuelos. PostgreSQL detecta el problema y cancela una de ellas.
+Un deadlock se produce cuando dos transacciones se bloquean entre sí. En este proyecto puede ocurrir cuando dos compras intentan actualizar la disponibilidad de boletos y los registros de compra al mismo tiempo, pero en diferente orden.
 
-### 4. ¿Qué estrategias existen para evitar deadlocks?
+La base de datos resuelve el problema cancelando una de las transacciones.
 
-Algunas estrategias son:
+## 4. ¿Qué estrategias existen para evitar deadlocks?
 
-* Acceder a las tablas siempre en el mismo orden.
-* Mantener las transacciones lo más cortas posible.
-* Usar bloqueos solo cuando sean necesarios.
-* Manejar errores con rollback.
-* Implementar reintentos automáticos cuando una transacción falla.
+Para evitar deadlocks se pueden aplicar estrategias como actualizar las tablas siempre en el mismo orden, mantener las transacciones cortas, liberar recursos rápidamente y controlar errores con rollback.
 
-### 5. ¿Qué sucede cuando una transacción alcanza el timeout?
+También se pueden implementar reintentos automáticos cuando una transacción falla.
 
-Cuando una transacción alcanza el timeout, la base de datos cancela la operación. Esto evita que el sistema quede bloqueado por demasiado tiempo. Para el usuario final, puede aparecer un mensaje de error o de espera agotada. Para manejarlo, se pueden usar mensajes claros, rollback automático y reintentos controlados.
+## 5. ¿Qué sucede cuando una transacción alcanza el timeout?
 
+Cuando una transacción alcanza el timeout, la base de datos cancela la operación. Esto evita que el sistema quede bloqueado por demasiado tiempo.
 
+Para el usuario final, puede mostrarse un mensaje indicando que la compra no pudo completarse. Para manejarlo mejor, se pueden usar mensajes claros, rollback automático y reintentos controlados.
 
 ## Conclusión
 
-Con esta práctica se comprendió la importancia de manejar correctamente las transacciones en una base de datos. Los savepoints permiten controlar errores parciales, los deadlocks muestran los riesgos de la concurrencia y los timeouts ayudan a evitar esperas prolongadas.
+Con este proyecto se comprendió cómo las transacciones ayudan a mantener la consistencia de los datos en un sistema de venta de boletos. Los savepoints permiten controlar errores parciales, los deadlocks muestran los problemas que pueden ocurrir cuando varios usuarios compran al mismo tiempo y los timeouts ayudan a evitar esperas demasiado largas.
 
-Este tipo de simulación es útil para entender cómo mantener la consistencia de los datos en sistemas reales, especialmente cuando varias operaciones dependen unas de otras.
+Este tipo de control es importante en sistemas reales de venta de entradas, especialmente en conciertos con alta demanda como BTS.
