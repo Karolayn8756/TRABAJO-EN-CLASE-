@@ -352,31 +352,25 @@ Estos mecanismos son importantes en sistemas de venta de boletos donde varios us
 ## Evidencias
 
 ### Imagen 1: Compra exitosa y creación de SAVEPOINT
-
-Insertar captura de la consola donde se muestre la compra completada y la creación de los savepoints.
-
-Imagen
+<img width="720" height="282" alt="{367B9642-4E2E-4762-9FC9-DB9DAD7406E9}" src="https://github.com/user-attachments/assets/87fafc37-d378-4c25-9ff7-96a41d697132" />
 
 ### Imagen 2: Simulación de Deadlock
 
-Insertar captura de la consola donde se observe la detección del deadlock entre las transacciones.
+<img width="957" height="253" alt="{3D5E5925-1B07-4A92-822B-8A1880566C84}" src="https://github.com/user-attachments/assets/de5b68d8-8003-421f-9a18-c218fc6f7046" />
 
-Imagen
 
 ### Imagen 3: Simulación de Timeout
 
-Insertar captura donde se muestre la cancelación de la operación al superar el tiempo configurado.
+<img width="963" height="135" alt="{4E25D906-235C-4BD3-848A-C93104EE7203}" src="https://github.com/user-attachments/assets/aeae8261-ace7-4155-9d6b-a71e20fa804d" />
 
-Imagen
 
 ### Imagen 4: Ejecución completa del programa
 
-Insertar captura de la terminal mostrando la ejecución general del sistema de compra de boletos BTS.
-
-Imagen
 
 ### Imagen 5: Base de datos creada
 
-Insertar captura desde pgAdmin mostrando la base de datos `boletos_bts` y sus tablas.
+<img width="816" height="538" alt="{C9081E57-16DB-4A4B-88D4-C29D24979FE7}" src="https://github.com/user-attachments/assets/ebc0fcd5-eb45-419a-9cbf-9327ab46a79f" />
 
-Imagen
+<img width="778" height="549" alt="{6F5E5A93-DF3A-429F-8C09-70D4BD8C4F0B}" src="https://github.com/user-attachments/assets/c3f083b7-5666-4dee-8376-624125426310" />
+<img width="652" height="565" alt="{B91ADC89-FDB5-4586-8B4B-BC757A422BB0}" src="https://github.com/user-attachments/assets/a45c568b-0172-4521-ba72-17a3f52e2417" />
+<img width="859" height="331" alt="{B7F01F99-2FAE-43A7-9EC0-C5EF57E03EBB}" src="https://github.com/user-attachments/assets/20b30147-fa08-4c25-bece-bc8bcdc71d5c" />
