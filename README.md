@@ -1,183 +1,382 @@
-# Simulación de Transacciones con Savepoints, Deadlocks y Timeouts
+# Simulación de Transacciones en PostgreSQL
 
-## Introducción
+## Introducción teórica
 
-Este proyecto simula un sistema de venta de boletos para un concierto de BTS usando una base de datos relacional. El objetivo es comprender cómo funcionan las transacciones, los savepoints, los deadlocks y los timeouts cuando varias operaciones dependen entre sí.
+### Transacciones y Savepoints
 
-En este caso, el sistema permite realizar una compra de boletos, verificar disponibilidad y controlar errores para evitar inconsistencias en los datos.
+Una transacción en una base de datos permite agrupar varias operaciones SQL dentro de un mismo proceso. Estas operaciones pueden confirmarse mediante un `COMMIT` cuando todo funciona correctamente o cancelarse utilizando `ROLLBACK` si se presenta algún error.
 
-## Objetivo del proyecto
+Los `SAVEPOINT` permiten crear puntos de control dentro de una transacción. Gracias a ellos, es posible regresar a una etapa específica del proceso sin cancelar inmediatamente todas las operaciones realizadas.
 
-Simular el comportamiento de transacciones en una base de datos, aplicando un caso práctico de compra de boletos para un concierto de BTS.
+Este mecanismo resulta útil en sistemas que realizan varios pasos consecutivos, ya que permite controlar errores parciales y mantener la consistencia de la información almacenada.
 
-El sistema debe manejar correctamente situaciones como falta de disponibilidad, cancelación de una compra, bloqueos entre transacciones y operaciones que tardan demasiado tiempo.
+### Deadlocks
 
-## Conceptos principales
+Un deadlock o interbloqueo ocurre cuando dos transacciones mantienen recursos bloqueados y cada una intenta acceder al recurso que está siendo utilizado por la otra.
 
-## Transacciones
+Como consecuencia, ambas operaciones quedan esperando mutuamente y no pueden continuar normalmente.
 
-Una transacción es un conjunto de operaciones que se ejecutan como una sola unidad. Si todo se realiza correctamente, se confirma con `COMMIT`. Si ocurre un error, se revierte con `ROLLBACK`.
+Este problema puede aparecer en sistemas donde varios usuarios realizan operaciones al mismo tiempo, como una plataforma de compra de boletos para conciertos.
 
-En este proyecto, la compra de boletos se maneja como una transacción porque se debe verificar la disponibilidad, descontar el boleto y registrar la compra de forma correcta.
+PostgreSQL puede detectar automáticamente un deadlock y cancelar una de las transacciones involucradas para liberar los recursos bloqueados.
 
-## Savepoints
+### Timeouts
 
-Un savepoint es un punto de control dentro de una transacción. Permite volver a una parte específica sin cancelar todo el proceso.
+Los timeouts permiten establecer un tiempo máximo de ejecución para una operación en PostgreSQL.
 
-En la simulación, se puede crear un savepoint después de seleccionar o reservar un boleto. Si luego ocurre un problema, como falta de disponibilidad o error en el proceso, el sistema puede regresar a ese punto y cancelar la operación sin afectar toda la base de datos.
+Cuando una consulta supera el tiempo configurado, el sistema cancela automáticamente su ejecución.
 
-## Deadlock
+Esto permite evitar que consultas demasiado lentas o procesos bloqueados permanezcan activos durante mucho tiempo y afecten el rendimiento de la base de datos.
 
-Un deadlock ocurre cuando dos transacciones se bloquean entre sí. Por ejemplo, una transacción puede estar actualizando la disponibilidad de boletos mientras otra intenta modificar la misma información al mismo tiempo.
+## Escenario del sistema
 
-Cuando esto sucede, la base de datos detecta el conflicto y cancela una de las transacciones para que la otra pueda continuar.
+En esta práctica se desarrolla una simulación de compra de boletos para un concierto de BTS.
 
-## Timeout
+El sistema realiza tres operaciones principales:
 
-Un timeout ocurre cuando una transacción tarda demasiado tiempo en completarse. La base de datos cancela la operación para evitar que el sistema quede esperando indefinidamente.
+* Verificación y descuento de boletos disponibles para el concierto.
+* Selección y reserva de un asiento.
+* Validación del proceso de pago.
 
-Esto es útil en sistemas de venta de boletos, donde muchos usuarios pueden intentar comprar al mismo tiempo.
+### Regla del sistema
 
-## Estructura del proyecto
+Si el asiento seleccionado no se encuentra disponible, el sistema realiza las siguientes acciones:
 
-El repositorio contiene los siguientes archivos:
+1. Regresa al savepoint creado después de descontar el boleto.
+2. Devuelve el boleto al inventario disponible.
+3. Cancela el proceso de compra.
 
-```text
-simulacion_transacciones.py
-README.md
-requirements.txt
-.gitignore
+Este comportamiento representa una situación que puede ocurrir en una plataforma real de venta de entradas.
+
+El objetivo es evitar que un boleto quede descontado cuando el usuario no logró completar correctamente la selección del asiento o el proceso de compra.
+
+## Cómo ejecutar el proyecto
+
+### 1. Clonar el repositorio
+
+Ejecutar los siguientes comandos desde una terminal:
+
+```bash
+git clone https://github.com/Karolayn8756/TRABAJO-EN-CLASE-.git
+cd TRABAJO-EN-CLASE-
 ```
 
-## Requisitos
+### 2. Instalar dependencias
 
-Para ejecutar el proyecto se necesita:
+Para conectar Python con PostgreSQL se utiliza la biblioteca `psycopg2`.
 
-Python 3.x instalado.
-
-PostgreSQL activo.
-
-Librería `psycopg2-binary`.
-
-Comando para instalar la librería:
+Ejecutar:
 
 ```bash
 pip install psycopg2-binary
 ```
 
-También se puede usar:
+### 3. Configurar la base de datos en PostgreSQL
+
+Antes de ejecutar el proyecto se debe comprobar que la base de datos esté creada correctamente.
+
+Datos utilizados para la conexión:
+
+* Base de datos: `boletos_bts`
+* Usuario: `emilia`
+* Contraseña: `root`
+* Host: `localhost`
+* Puerto: `5432`
+
+Estos datos deben coincidir con la configuración utilizada dentro del código Python.
+
+```python
+def nueva_conexion():
+    return psycopg2.connect(
+        database="boletos_bts",
+        user="emilia",
+        password="root",
+        host="localhost",
+        port="5432"
+    )
+```
+
+### 4. Ejecutar el programa
+
+Desde la carpeta del proyecto ejecutar:
 
 ```bash
-pip install -r requirements.txt
+python main.py
 ```
 
-## Funcionamiento del sistema
+### 5. Verificar los resultados
 
-El sistema trabaja con tablas relacionadas con la venta de boletos para el concierto de BTS.
+El funcionamiento del programa puede comprobarse mediante la consola y pgAdmin.
 
-Por ejemplo:
+En la consola se pueden observar los siguientes procesos:
 
-`boletos`: almacena la información de los boletos disponibles.
+* Inicio de la compra.
+* Verificación de boletos disponibles.
+* Creación de savepoints.
+* Reserva del asiento.
+* Procesamiento del pago.
+* Confirmación de la compra.
+* Rollbacks.
+* Deadlocks.
+* Timeouts.
 
-`clientes`: almacena los datos de las personas que compran boletos.
+Desde pgAdmin se pueden consultar los cambios realizados en las tablas:
 
-`compras`: registra las compras realizadas.
+* `conciertos`
+* `asientos`
+* `pagos`
 
-El sistema verifica si existen boletos disponibles antes de confirmar una compra. Si hay disponibilidad, se descuenta el boleto y se registra la compra. Si ocurre un error, la transacción se revierte para mantener la consistencia de los datos.
+## Explicación del código
 
-## Simulación de compra de boleto
+### Conexión a PostgreSQL
 
-El proceso funciona de la siguiente manera:
+La conexión con PostgreSQL se realiza mediante la biblioteca `psycopg2`.
 
-1. Se verifica si hay boletos disponibles.
-2. Se reserva o descuenta un boleto.
-3. Se crea un savepoint dentro de la transacción.
-4. Se intenta registrar la compra.
-5. Si todo sale bien, se confirma la transacción.
-6. Si ocurre un error, se vuelve al savepoint o se realiza un rollback.
+La función `nueva_conexion()` contiene los parámetros necesarios para conectarse con la base de datos.
 
-De esta manera, el sistema evita vender boletos que ya no están disponibles.
+```python
+def nueva_conexion():
+    return psycopg2.connect(
+        database="boletos_bts",
+        user="emilia",
+        password="root",
+        host="localhost",
+        port="5432"
+    )
+```
 
-## Simulación de deadlock
+Cada proceso obtiene una conexión con PostgreSQL.
 
-Para simular un deadlock se ejecutan dos transacciones al mismo tiempo.
+El control manual de las transacciones permite utilizar `commit()` para guardar los cambios y `rollback()` para cancelar las operaciones cuando ocurre un problema.
 
-Una transacción intenta actualizar primero la disponibilidad de boletos y luego la compra.
+## Flujo de la transacción
 
-Otra transacción intenta actualizar primero la compra y luego la disponibilidad de boletos.
-
-Como ambas transacciones esperan recursos bloqueados por la otra, se produce un deadlock. La base de datos detecta el problema y cancela una de ellas.
-
-## Simulación de timeout
-
-La simulación de timeout consiste en configurar un tiempo máximo de espera para una operación. Si una transacción tarda demasiado, la base de datos la cancela.
-
-Esto representa una situación real en la venta de boletos, cuando muchas personas intentan comprar entradas al mismo tiempo y el sistema puede tardar en responder.
-
-## Resultados esperados
-
-Compra exitosa:
+El sistema de compra sigue el siguiente proceso:
 
 ```text
-Boleto disponible.
-Compra registrada correctamente.
-Transacción confirmada.
+BEGIN
+Verificar boletos disponibles
+Descontar boleto
+SAVEPOINT sp_boleto
+Verificar asiento
+Reservar asiento
+SAVEPOINT sp_asiento
+Validar pago
+Confirmar compra
+COMMIT
 ```
 
-Falta de disponibilidad:
+Primero se verifica la cantidad de boletos disponibles para el concierto.
+
+Cuando existe disponibilidad, se descuenta un boleto y se crea el primer savepoint:
+
+```sql
+SAVEPOINT sp_boleto;
+```
+
+Después se consulta el estado del asiento seleccionado.
+
+Si el asiento está disponible, su estado cambia y se crea un segundo savepoint:
+
+```sql
+SAVEPOINT sp_asiento;
+```
+
+Finalmente, el sistema procesa y valida el pago.
+
+Si las operaciones se completan correctamente, se utiliza:
+
+```python
+conn.commit()
+```
+
+El `COMMIT` permite guardar permanentemente todos los cambios realizados dentro de la transacción.
+
+## Manejo de errores
+
+El programa contiene diferentes validaciones durante la compra.
+
+Si no existen boletos disponibles, se genera una excepción y la operación es cancelada.
+
+Cuando el asiento seleccionado no está disponible, el sistema utiliza:
+
+```sql
+ROLLBACK TO SAVEPOINT sp_boleto;
+```
+
+Después se incrementa nuevamente la cantidad de boletos disponibles para devolver el boleto que había sido descontado.
+
+Si ocurre un error general durante la ejecución del programa, se utiliza:
+
+```python
+conn.rollback()
+```
+
+Esta instrucción cancela las operaciones pendientes de la transacción.
+
+El manejo de errores evita situaciones incorrectas, como descontar un boleto cuando la compra realmente no pudo completarse.
+
+## Simulación de Deadlock
+
+Para demostrar un deadlock se ejecutan dos transacciones concurrentes utilizando hilos de Python.
+
+La primera transacción ejecuta el siguiente proceso:
 
 ```text
-No hay boletos disponibles.
-Rollback ejecutado.
-Compra cancelada.
+T1 bloquea conciertos
+T1 espera
+T1 intenta bloquear asientos
 ```
 
-Deadlock:
+La segunda transacción realiza las operaciones en un orden diferente:
 
 ```text
-Deadlock detectado.
-Una transacción fue cancelada.
-La otra transacción continuó correctamente.
+T2 bloquea asientos
+T2 espera
+T2 intenta bloquear conciertos
 ```
 
-Timeout:
+El problema ocurre porque la primera transacción mantiene bloqueado el concierto mientras espera acceder al asiento.
+
+Al mismo tiempo, la segunda transacción mantiene bloqueado el asiento mientras espera acceder al concierto.
+
+La situación puede representarse de la siguiente manera:
 
 ```text
-Tiempo de espera agotado.
-Operación cancelada.
-Rollback ejecutado.
+T1 tiene CONCIERTO y espera ASIENTO
+T2 tiene ASIENTO y espera CONCIERTO
 ```
+
+Esto genera una espera circular entre las dos transacciones.
+
+PostgreSQL detecta automáticamente el deadlock y cancela una de las transacciones para liberar los recursos bloqueados.
+
+La transacción cancelada realiza un rollback y la otra puede continuar con su ejecución.
+
+## Simulación de Timeout
+
+Para realizar la simulación de timeout se configura el siguiente límite:
+
+```sql
+SET statement_timeout = '3000';
+```
+
+El valor `3000` representa un máximo de 3000 milisegundos o 3 segundos.
+
+Posteriormente se ejecuta:
+
+```sql
+SELECT pg_sleep(6);
+```
+
+La función `pg_sleep(6)` intenta mantener la consulta activa durante 6 segundos.
+
+Como el tiempo permitido es únicamente de 3 segundos, PostgreSQL cancela automáticamente la operación.
+
+El error generado es capturado por Python y se realiza un rollback de la transacción.
+
+El timeout ayuda a evitar que procesos demasiado lentos permanezcan activos durante largos periodos y afecten a otros usuarios del sistema.
 
 ## Preguntas de reflexión
 
-## 1. ¿Por qué es importante usar savepoints en transacciones largas? ¿Qué problema resuelven?
+### 1. ¿Por qué es importante utilizar savepoints en transacciones extensas?
 
-Los savepoints son importantes porque permiten regresar a un punto específico dentro de una transacción sin cancelar todo el proceso. Resuelven el problema de tener que repetir toda la operación cuando solo falló una parte.
+Los savepoints permiten establecer puntos de control dentro de una transacción.
 
-## 2. En el escenario de venta de boletos, ¿qué pasaría si no usáramos savepoints?
+Si ocurre un problema durante una operación, es posible regresar a una etapa específica sin cancelar inmediatamente todo el proceso.
 
-Si no se usaran savepoints, el sistema podría descontar un boleto aunque la compra no se complete correctamente. Esto causaría inconsistencias, porque el boleto aparecería como vendido aunque el cliente no haya terminado la compra.
+En el sistema de boletos, permiten controlar errores relacionados con la selección del asiento y las diferentes etapas de la compra.
 
-## 3. ¿Cómo se produce un deadlock en una base de datos?
+### 2. ¿Qué ocurriría si no se utilizaran savepoints y el asiento ya estuviera ocupado?
 
-Un deadlock se produce cuando dos transacciones se bloquean entre sí. En este proyecto puede ocurrir cuando dos compras intentan actualizar la disponibilidad de boletos y los registros de compra al mismo tiempo, pero en diferente orden.
+Sin savepoints sería necesario cancelar completamente la transacción o implementar otras operaciones para controlar manualmente los cambios realizados.
 
-La base de datos resuelve el problema cancelando una de las transacciones.
+Por ejemplo, el sistema podría haber descontado un boleto antes de detectar que el asiento seleccionado estaba ocupado.
 
-## 4. ¿Qué estrategias existen para evitar deadlocks?
+Los savepoints facilitan el control de estas situaciones y permiten mantener los datos en un estado consistente.
 
-Para evitar deadlocks se pueden aplicar estrategias como actualizar las tablas siempre en el mismo orden, mantener las transacciones cortas, liberar recursos rápidamente y controlar errores con rollback.
+### 3. ¿Cómo se produce un deadlock y cómo se representa en el programa?
 
-También se pueden implementar reintentos automáticos cuando una transacción falla.
+Un deadlock ocurre cuando dos transacciones esperan recursos que se encuentran bloqueados mutuamente.
 
-## 5. ¿Qué sucede cuando una transacción alcanza el timeout?
+En el programa, la primera transacción bloquea el concierto y posteriormente intenta acceder al asiento.
 
-Cuando una transacción alcanza el timeout, la base de datos cancela la operación. Esto evita que el sistema quede bloqueado por demasiado tiempo.
+La segunda transacción realiza el proceso contrario, bloqueando primero el asiento e intentando después acceder al concierto.
 
-Para el usuario final, puede mostrarse un mensaje indicando que la compra no pudo completarse. Para manejarlo mejor, se pueden usar mensajes claros, rollback automático y reintentos controlados.
+Debido al orden inverso de acceso a los recursos, se produce una espera circular.
+
+PostgreSQL identifica automáticamente el deadlock y cancela una de las transacciones involucradas.
+
+### 4. ¿Qué estrategias se pueden utilizar para disminuir los deadlocks?
+
+Algunas estrategias para reducir la aparición de deadlocks son:
+
+* Acceder a las tablas y registros siguiendo siempre el mismo orden.
+* Mantener las transacciones cortas.
+* Evitar bloqueos que no sean necesarios.
+* Utilizar índices adecuados.
+* Optimizar las consultas SQL.
+* Implementar reintentos automáticos cuando se detecte un deadlock.
+
+Una de las principales medidas consiste en mantener un orden consistente al acceder a los recursos.
+
+### 5. ¿Qué ocurre cuando una transacción alcanza el timeout?
+
+Cuando una operación supera el tiempo máximo configurado, PostgreSQL cancela automáticamente su ejecución.
+
+Para el usuario, esto puede significar que la compra del boleto no se completó correctamente.
+
+En un sistema real se podrían implementar diferentes mecanismos para manejar este problema:
+
+* Mostrar mensajes de error claros.
+* Solicitar al usuario que vuelva a intentar la compra.
+* Implementar reintentos automáticos.
+* Optimizar las consultas.
+* Revisar el rendimiento de la base de datos.
+* Configurar tiempos de espera adecuados.
+
+El timeout permite proteger la base de datos frente a operaciones demasiado lentas.
 
 ## Conclusión
 
-Con este proyecto se comprendió cómo las transacciones ayudan a mantener la consistencia de los datos en un sistema de venta de boletos. Los savepoints permiten controlar errores parciales, los deadlocks muestran los problemas que pueden ocurrir cuando varios usuarios compran al mismo tiempo y los timeouts ayudan a evitar esperas demasiado largas.
+Esta práctica permitió comprender el funcionamiento de las transacciones en PostgreSQL mediante la simulación de un sistema de compra de boletos para un concierto de BTS.
 
-Este tipo de control es importante en sistemas reales de venta de entradas, especialmente en conciertos con alta demanda como BTS.
+Durante el desarrollo se utilizaron savepoints para crear puntos de control dentro del proceso de compra y permitir el manejo de errores parciales.
+
+También se realizó una simulación de deadlock utilizando dos transacciones concurrentes que acceden al concierto y al asiento en un orden diferente.
+
+Finalmente, se implementó `statement_timeout` para demostrar cómo PostgreSQL puede cancelar consultas que superan un tiempo máximo de ejecución.
+
+Estos mecanismos son importantes en sistemas de venta de boletos donde varios usuarios pueden intentar realizar compras simultáneamente. El manejo adecuado de las transacciones permite conservar la consistencia de los datos, controlar problemas de concurrencia y mantener un funcionamiento estable de la base de datos.
+
+## Evidencias
+
+### Imagen 1: Compra exitosa y creación de SAVEPOINT
+
+Insertar captura de la consola donde se muestre la compra completada y la creación de los savepoints.
+
+Imagen
+
+### Imagen 2: Simulación de Deadlock
+
+Insertar captura de la consola donde se observe la detección del deadlock entre las transacciones.
+
+Imagen
+
+### Imagen 3: Simulación de Timeout
+
+Insertar captura donde se muestre la cancelación de la operación al superar el tiempo configurado.
+
+Imagen
+
+### Imagen 4: Ejecución completa del programa
+
+Insertar captura de la terminal mostrando la ejecución general del sistema de compra de boletos BTS.
+
+Imagen
+
+### Imagen 5: Base de datos creada
+
+Insertar captura desde pgAdmin mostrando la base de datos `boletos_bts` y sus tablas.
+
+Imagen
