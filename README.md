@@ -365,6 +365,7 @@ Estos mecanismos son importantes en sistemas de venta de boletos donde varios us
 
 
 ### Imagen 4: Ejecución completa del programa
+<img width="943" height="785" alt="{77992EA8-753B-434F-A5FD-10736E5C2774}" src="https://github.com/user-attachments/assets/13166fc6-b01e-4167-82d8-05a629a3cfdb" />
 
 
 ### Imagen 5: Base de datos creada
